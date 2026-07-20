@@ -1,0 +1,17 @@
+[Unit]
+Description=Ham Shack Dashboard
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/peter
+ExecStart=/home/peter/shackboard
+Restart=on-failure
+RestartSec=5
+
+Environment=SHACKBOARD_PORT=8093
+Environment=SHACKBOARD_CLUSTER_HOST=dxc.ve7cc.net:23
+Environment=SHACKBOARD_CLUSTER_CALL=G8GDS
+
+[Install]
+WantedBy=default.target

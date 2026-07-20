@@ -1,0 +1,23 @@
+# Reference only — not applied automatically.
+#
+# Server layout as of 2026-07-20: fimblefowl.co.uk resolves to the newer
+# Hetzner VM (debian-4gb-fsn1-1, same box as lcwo), and nginx config lives
+# under /etc/nginx/sites-enabled/*.conf (Debian's sites-available/enabled
+# convention) — NOT the old nginx.conf + conf.d/*.conf split.
+#
+# Add BOTH of these location blocks to the `server { server_name
+# fimblefowl.co.uk; ... }` HTTPS block in /etc/nginx/sites-enabled/fimblefowl.conf,
+# alongside the existing `location /cashflow/ { ... }` block:
+#
+#   location /shackboard/ {
+#       proxy_pass http://127.0.0.1:8093/;
+#   }
+#
+#   # mirrors the existing block in quanglewangle.conf — qrzlook itself is
+#   # already running and working (127.0.0.1:8091), it just wasn't exposed
+#   # on this domain yet.
+#   location /qrz/ {
+#       proxy_pass http://127.0.0.1:8091/;
+#   }
+#
+# Then: sudo nginx -t && sudo systemctl reload nginx

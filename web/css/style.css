@@ -1,0 +1,182 @@
+:root {
+  --bg: #0b0f14;
+  --panel-bg: #131a22;
+  --border: #223041;
+  --text: #d8e1ea;
+  --text-dim: #7c8ea3;
+  --accent: #4fb0ff;
+  --good: #3ecf6b;
+  --fair: #e0b23e;
+  --poor: #e05a4f;
+  font-size: 15px;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  height: 100%;
+}
+
+#app {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 12px;
+  min-height: 100vh;
+}
+
+#map-panel {
+  position: relative;
+  flex: 3 1 640px;
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  min-height: 320px;
+}
+
+#map {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+#clocks {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  display: flex;
+  gap: 16px;
+  background: rgba(11, 15, 20, 0.7);
+  padding: 6px 12px;
+  border-radius: 6px;
+}
+
+.clock { display: flex; flex-direction: column; align-items: center; }
+.clock-label { font-size: 0.7rem; letter-spacing: 0.08em; color: var(--text-dim); }
+.clock-time { font-size: 1.15rem; font-variant-numeric: tabular-nums; }
+
+#qth-setup {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  background: rgba(11, 15, 20, 0.7);
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+}
+
+#qth-setup label { color: var(--text-dim); }
+#qth-setup input {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 4px;
+  padding: 3px 6px;
+  width: 8em;
+}
+#qth-setup button {
+  background: var(--accent);
+  border: none;
+  color: #041018;
+  border-radius: 4px;
+  padding: 4px 10px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+#side-panels {
+  flex: 1 1 280px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 280px;
+}
+
+.panel {
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.panel h2 {
+  margin: 0 0 8px;
+  font-size: 0.85rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+#propagation-body table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+#propagation-body td, #propagation-body th {
+  padding: 3px 4px;
+  text-align: center;
+  border-bottom: 1px solid var(--border);
+}
+#propagation-body th { color: var(--text-dim); font-weight: 500; }
+#propagation-body td:first-child, #propagation-body th:first-child { text-align: left; }
+#propagation-body .updated { color: var(--text-dim); font-size: 0.75rem; margin-top: 6px; }
+
+.cond-good { color: var(--good); font-weight: 600; }
+.cond-fair { color: var(--fair); font-weight: 600; }
+.cond-poor { color: var(--poor); font-weight: 600; }
+
+#spots-status { color: var(--text-dim); font-size: 0.75rem; margin-bottom: 6px; }
+#spots-status.connected::before { content: "\25cf "; color: var(--good); }
+#spots-status.disconnected::before { content: "\25cf "; color: var(--poor); }
+
+#spots-body { max-height: 420px; overflow-y: auto; }
+#spots-body table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+#spots-body td, #spots-body th {
+  padding: 3px 4px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+#spots-body th { color: var(--text-dim); font-weight: 500; text-align: left; }
+#spots-body .dx-call {
+  color: var(--accent);
+  cursor: pointer;
+  font-weight: 600;
+}
+#spots-body .dx-call:hover { text-decoration: underline; }
+#spots-body .comment {
+  color: var(--text-dim);
+  white-space: normal;
+  max-width: 14em;
+}
+
+#callsign-popup {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  min-width: 200px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  z-index: 10;
+}
+#callsign-popup.hidden { display: none; }
+#callsign-popup-close {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 1.1rem;
+  cursor: pointer;
+}
+#callsign-popup-body dl { margin: 0; }
+#callsign-popup-body dt { color: var(--text-dim); font-size: 0.7rem; margin-top: 6px; }
+#callsign-popup-body dd { margin: 0; font-size: 0.95rem; }
