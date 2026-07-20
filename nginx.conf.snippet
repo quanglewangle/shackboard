@@ -5,13 +5,18 @@
 # under /etc/nginx/sites-enabled/*.conf (Debian's sites-available/enabled
 # convention) — NOT the old nginx.conf + conf.d/*.conf split.
 #
-# Add BOTH of these location blocks to the `server { server_name
+# Add these location blocks to the `server { server_name
 # fimblefowl.co.uk; ... }` HTTPS block in /etc/nginx/sites-enabled/fimblefowl.conf,
 # alongside the existing `location /cashflow/ { ... }` block:
 #
 #   location /shackboard/ {
 #       proxy_pass http://127.0.0.1:8093/;
 #   }
+#
+# (a `client_max_body_size 16m;` was added here for a manual ADIF-upload
+# endpoint that existed briefly during development — since replaced by
+# automatic QRZ Logbook sync, so no longer needed for new setups. Left in
+# place on the live server since a larger body-size limit is harmless.)
 #
 #   # mirrors the existing block in quanglewangle.conf — qrzlook itself is
 #   # already running and working (127.0.0.1:8091), it just wasn't exposed

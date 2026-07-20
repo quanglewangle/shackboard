@@ -12,7 +12,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/quanglewangle/shackboard/internal/adif"
 	"github.com/quanglewangle/shackboard/internal/cluster"
+	"github.com/quanglewangle/shackboard/internal/parkspots"
+	"github.com/quanglewangle/shackboard/internal/qrzlogbook"
 	"github.com/quanglewangle/shackboard/internal/spacewx"
 )
 
@@ -32,6 +35,10 @@ func main() {
 	spacewxURL := getenv("SHACKBOARD_SPACEWX_URL", "https://www.hamqsl.com/solarxml.php")
 	bufSize := getenvInt("SHACKBOARD_SPOT_BUFFER_SIZE", 200)
 	maxAge := getenvDuration("SHACKBOARD_SPOT_MAX_AGE", 2*time.Hour)
+	potaURL := getenv("SHACKBOARD_POTA_URL", "https://api.pota.app/spot/activator")
+	sotaURL := getenv("SHACKBOARD_SOTA_URL", "https://api2.sota.org.uk/api/spots/100/all")
+	qrzLogbookURL := getenv("SHACKBOARD_QRZ_LOGBOOK_URL", "https://logbook.qrz.com/api")
+	qrzLogbookKey := os.Getenv("SHACKBOARD_QRZ_LOGBOOK_KEY") // unset = worked-before sync disabled
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -42,6 +49,12 @@ func main() {
 	spotBuf := cluster.NewBuffer(bufSize, maxAge)
 	clusterClient := cluster.NewClient(clusterHost, clusterCall, spotBuf)
 	go clusterClient.Run(ctx)
+
+	parkCache := parkspots.NewCache()
+	go parkspots.Poll(ctx, parkCache, http.DefaultClient, potaURL, sotaURL, 2*time.Minute)
+
+	logIndex := adif.NewIndex()
+	go qrzlogbook.Poll(ctx, logIndex, http.DefaultClient, qrzLogbookURL, qrzLogbookKey, time.Hour)
 
 	staticFS, err := fs.Sub(webFS, "web")
 	if err != nil {
@@ -78,11 +91,26 @@ func main() {
 		}
 		spots := spotBuf.Recent(limit)
 		writeJSON(w, http.StatusOK, map[string]any{
-			"spots":             spots,
+			"spots":             decorateSpots(spots, logIndex),
 			"count":             len(spots),
 			"cluster_connected": clusterClient.Connected(),
 			"cluster_host":      clusterHost,
 		})
+	})
+
+	mux.HandleFunc("GET /api/park-spots", func(w http.ResponseWriter, r *http.Request) {
+		data := parkCache.Get()
+		writeJSON(w, http.StatusOK, map[string]any{
+			"spots":      decorateParkSpots(data.Spots, logIndex),
+			"count":      len(data.Spots),
+			"pota_ok":    data.POTAOk,
+			"sota_ok":    data.SOTAOk,
+			"fetched_at": data.FetchedAt,
+		})
+	})
+
+	mux.HandleFunc("GET /api/log", func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, http.StatusOK, logIndex.Status())
 	})
 
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
@@ -109,6 +137,45 @@ func main() {
 	if err := http.ListenAndServe(addr, mux); err != nil {
 		log.Fatal(err)
 	}
+}
+
+// decoratedSpot/decoratedParkSpot exist so cluster and parkspots never need
+// to import adif themselves — main.go is the only place that knows about
+// both a spot source and the worked-before index.
+type decoratedSpot struct {
+	cluster.Spot
+	WorkedAny  bool `json:"worked_any"`
+	WorkedBand bool `json:"worked_band"`
+}
+
+func decorateSpots(spots []cluster.Spot, idx *adif.Index) []decoratedSpot {
+	out := make([]decoratedSpot, len(spots))
+	for i, s := range spots {
+		out[i] = decoratedSpot{
+			Spot:       s,
+			WorkedAny:  idx.WorkedAny(s.DXCall),
+			WorkedBand: idx.WorkedBand(s.DXCall, s.Band),
+		}
+	}
+	return out
+}
+
+type decoratedParkSpot struct {
+	parkspots.Spot
+	WorkedAny  bool `json:"worked_any"`
+	WorkedBand bool `json:"worked_band"`
+}
+
+func decorateParkSpots(spots []parkspots.Spot, idx *adif.Index) []decoratedParkSpot {
+	out := make([]decoratedParkSpot, len(spots))
+	for i, s := range spots {
+		out[i] = decoratedParkSpot{
+			Spot:       s,
+			WorkedAny:  idx.WorkedAny(s.Activator),
+			WorkedBand: idx.WorkedBand(s.Activator, s.Band),
+		}
+	}
+	return out
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {

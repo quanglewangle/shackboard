@@ -30,7 +30,7 @@ func parseSpotLine(line string) (Spot, bool) {
 	return Spot{
 		Spotter:    m[1],
 		FreqKHz:    freq,
-		Band:       bandForFreqKHz(freq),
+		Band:       BandForFreqKHz(freq),
 		DXCall:     m[3],
 		Comment:    strings.TrimSpace(m[4]),
 		TimeUTC:    m[5] + "Z",
@@ -62,7 +62,10 @@ var bandRanges = []bandRange{
 	{420000, 450000, "70cm"},
 }
 
-func bandForFreqKHz(khz float64) string {
+// BandForFreqKHz maps a frequency in kHz to an amateur band name (e.g.
+// "20m"), or "" if it doesn't fall in any known band. Shared with the adif
+// and parkspots packages so there's one band table, not three.
+func BandForFreqKHz(khz float64) string {
 	for _, r := range bandRanges {
 		if khz >= r.loKHz && khz <= r.hiKHz {
 			return r.name

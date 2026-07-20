@@ -2,7 +2,9 @@
 
 A web-based Shackboard (ham shack dashboard) workalike: world map with
 day/night grayline, UTC + local clocks, a per-band propagation-conditions
-summary, and live DX cluster spots with click-through QRZ callsign lookup.
+summary, live DX cluster spots and POTA/SOTA activator spots (both with
+click-through QRZ callsign lookup), and "worked before" highlighting
+synced automatically from your QRZ Logbook.
 
 Single Go binary, stdlib `net/http` only, no database. The frontend
 (`web/`) is embedded into the binary via `go:embed`.
@@ -26,10 +28,33 @@ Then open http://localhost:8093/.
 | `SHACKBOARD_SPOT_BUFFER_SIZE` | `200` | spot ring buffer capacity |
 | `SHACKBOARD_SPOT_MAX_AGE` | `2h` | spots older than this are dropped |
 | `SHACKBOARD_DEBUG` | unset | log unmatched cluster lines |
+| `SHACKBOARD_POTA_URL` | `https://api.pota.app/spot/activator` | POTA activator-spot feed |
+| `SHACKBOARD_SOTA_URL` | `https://api2.sota.org.uk/api/spots/100/all` | SOTA spot feed |
+| `SHACKBOARD_QRZ_LOGBOOK_KEY` | unset | QRZ Logbook Data API key — enables "worked before" sync; disabled entirely if unset |
+| `SHACKBOARD_QRZ_LOGBOOK_URL` | `https://logbook.qrz.com/api` | QRZ Logbook API endpoint |
 
 Your home QTH isn't backend config — enter your callsign in the UI once
 (saved to localStorage); it's resolved via the sibling `qrzlook` service at
 `/qrz/lookup/{callsign}`.
+
+## API
+
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/api/spacewx` | per-band propagation conditions |
+| GET | `/api/spots` | DX cluster spots, `?limit=N` (default 100) |
+| GET | `/api/park-spots` | merged POTA + SOTA spots |
+| GET | `/api/log` | worked-before index status: `{"loaded","qso_count","synced_at"}` |
+| GET | `/health` | liveness + subsystem status |
+
+`/api/spots` and `/api/park-spots` entries are decorated with `worked_any`/
+`worked_band` booleans against the log currently synced from QRZ.
+
+The worked-before index is populated automatically — no manual step. If
+`SHACKBOARD_QRZ_LOGBOOK_KEY` is set, shackboard fetches your whole QRZ
+Logbook via QRZ's Logbook Data API (get a key from your QRZ account >
+Logbook > Settings > API — different from the XML lookup key qrzlook
+uses) once at startup and hourly thereafter.
 
 ## Deploy
 

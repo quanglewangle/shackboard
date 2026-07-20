@@ -146,30 +146,49 @@ html, body {
 .cond-fair { color: var(--fair); font-weight: 600; }
 .cond-poor { color: var(--poor); font-weight: 600; }
 
-#spots-status { color: var(--text-dim); font-size: 0.75rem; margin-bottom: 6px; }
-#spots-status.connected::before { content: "\25cf "; color: var(--good); }
-#spots-status.disconnected::before { content: "\25cf "; color: var(--poor); }
+#spots-status, #parks-status { color: var(--text-dim); font-size: 0.75rem; margin-bottom: 6px; }
+#spots-status.connected::before, #parks-status.connected::before { content: "\25cf "; color: var(--good); }
+#spots-status.disconnected::before, #parks-status.disconnected::before { content: "\25cf "; color: var(--poor); }
 
-#spots-body { max-height: 420px; overflow-y: auto; overflow-x: auto; }
-#spots-body table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
-#spots-body td, #spots-body th {
+#spots-body, #parks-body { max-height: 420px; overflow-y: auto; overflow-x: auto; }
+.spot-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+.spot-table td, .spot-table th {
   padding: 3px 4px;
   border-bottom: 1px solid var(--border);
   white-space: nowrap;
 }
-#spots-body th { color: var(--text-dim); font-weight: 500; text-align: left; }
-#spots-body .dx-call {
+.spot-table th { color: var(--text-dim); font-weight: 500; text-align: left; }
+.spot-table .dx-call {
   color: var(--accent);
   cursor: pointer;
   font-weight: 600;
 }
-#spots-body .dx-call:hover { text-decoration: underline; }
-#spots-body .comment {
+.spot-table .dx-call:hover { text-decoration: underline; }
+.spot-table .comment {
   color: var(--text-dim);
   white-space: normal;
   max-width: 9em;
   overflow-wrap: anywhere;
 }
+.spot-table .ref-name {
+  color: var(--text-dim);
+  max-width: 12em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.prog-badge { font-size: 0.7rem; font-weight: 700; padding: 1px 5px; border-radius: 3px; }
+.prog-pota { background: rgba(62, 207, 107, 0.15); color: var(--good); }
+.prog-sota { background: rgba(79, 176, 255, 0.15); color: var(--accent); }
+
+/* worked-band: worked on this exact band before — the strongest "already
+   got this one" signal, gets a stripe on top of the shared dim treatment.
+   worked-any: worked before but on a different band — still maybe worth
+   working, so only dimmed, no stripe. */
+tr.worked-any td, tr.worked-band td { opacity: 0.55; }
+tr.worked-band { border-left: 3px solid var(--poor); }
+
+.status-line { color: var(--text-dim); font-size: 0.75rem; padding: 2px 2px 4px; }
 
 #callsign-popup {
   position: fixed;

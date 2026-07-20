@@ -10,8 +10,10 @@ const Cluster = (() => {
       : `Disconnected from ${data.cluster_host} — reconnecting`;
     status.className = data.cluster_connected ? 'connected' : 'disconnected';
 
-    const rows = data.spots.map(s => `
-      <tr>
+    const rows = data.spots.map(s => {
+      const workedClass = s.worked_band ? 'worked-band' : (s.worked_any ? 'worked-any' : '');
+      return `
+      <tr class="${workedClass}">
         <td>${s.time_utc}</td>
         <td>${s.band}</td>
         <td>${s.freq_khz.toFixed(1)}</td>
@@ -19,10 +21,11 @@ const Cluster = (() => {
         <td>${s.spotter}</td>
         <td class="comment">${s.comment}</td>
       </tr>
-    `).join('');
+    `;
+    }).join('');
 
     body.innerHTML = `
-      <table>
+      <table class="spot-table">
         <thead><tr><th>UTC</th><th>Band</th><th>kHz</th><th>DX</th><th>Spotter</th><th>Comment</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>

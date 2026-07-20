@@ -3,6 +3,8 @@
 
   SpaceWx.start(5 * 60 * 1000);
   Cluster.start(15 * 1000);
+  ParkSpots.start(30 * 1000);
+  LogStatus.start(5 * 60 * 1000);
 
   const utcEl = document.getElementById('clock-utc');
   const localEl = document.getElementById('clock-local');

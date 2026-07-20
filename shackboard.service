@@ -12,6 +12,11 @@ RestartSec=5
 Environment=SHACKBOARD_PORT=8093
 Environment=SHACKBOARD_CLUSTER_HOST=dxc.ve7cc.net:23
 Environment=SHACKBOARD_CLUSTER_CALL=G8GDS
+# Required for "worked before" highlighting — a QRZ Logbook Data API key
+# (from your QRZ account > Logbook > Settings > API; different from the
+# XML lookup key qrzlook uses). Set the real value only on the deployed
+# copy of this file, never commit a real secret here.
+Environment=SHACKBOARD_QRZ_LOGBOOK_KEY=changeme
 
 [Install]
 WantedBy=default.target
