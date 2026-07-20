@@ -74,6 +74,7 @@ html, body {
   font-size: 0.8rem;
 }
 
+#qth-setup-form { display: flex; gap: 6px; align-items: center; }
 #qth-setup label { color: var(--text-dim); }
 #qth-setup input {
   background: var(--bg);
@@ -83,7 +84,7 @@ html, body {
   padding: 3px 6px;
   width: 8em;
 }
-#qth-setup button {
+#qth-setup-form button {
   background: var(--accent);
   border: none;
   color: #041018;
@@ -92,6 +93,21 @@ html, body {
   cursor: pointer;
   font-weight: 600;
 }
+#qth-setup-display {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  padding: 2px 0;
+}
+#qth-setup-display:hover { color: var(--text); }
+#qth-setup-display span { color: var(--text); font-weight: 600; }
+
+.hidden { display: none; }
+/* .hidden must win over the #qth-setup-form/#qth-setup-display base rules
+   above despite matching source order, since a plain ID selector otherwise
+   beats a plain class selector regardless of order. */
+#qth-setup-form.hidden, #qth-setup-display.hidden { display: none; }
 
 #side-panels {
   flex: 1 1 280px;
@@ -167,7 +183,6 @@ html, body {
   box-shadow: 0 8px 24px rgba(0,0,0,0.4);
   z-index: 10;
 }
-#callsign-popup.hidden { display: none; }
 #callsign-popup-close {
   position: absolute;
   top: 6px;

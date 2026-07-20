@@ -16,9 +16,12 @@
       <div class="clock"><span class="clock-label" id="clock-local-label">LOCAL</span><span id="clock-local" class="clock-time">--:--:--</span></div>
     </div>
     <div id="qth-setup">
-      <label for="callsign-input">Your callsign</label>
-      <input id="callsign-input" type="text" placeholder="e.g. G8GDS" autocomplete="off" spellcheck="false">
-      <button id="callsign-save">Set</button>
+      <div id="qth-setup-form">
+        <label for="callsign-input">Your callsign</label>
+        <input id="callsign-input" type="text" placeholder="e.g. G8GDS" autocomplete="off" spellcheck="false">
+        <button id="callsign-save">Set</button>
+      </div>
+      <button id="qth-setup-display" class="hidden">Callsign: <span id="qth-setup-call"></span> (change)</button>
     </div>
   </section>
 
