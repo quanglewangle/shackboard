@@ -134,7 +134,7 @@ html, body {
 #spots-status.connected::before { content: "\25cf "; color: var(--good); }
 #spots-status.disconnected::before { content: "\25cf "; color: var(--poor); }
 
-#spots-body { max-height: 420px; overflow-y: auto; }
+#spots-body { max-height: 420px; overflow-y: auto; overflow-x: auto; }
 #spots-body table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
 #spots-body td, #spots-body th {
   padding: 3px 4px;
@@ -151,7 +151,8 @@ html, body {
 #spots-body .comment {
   color: var(--text-dim);
   white-space: normal;
-  max-width: 14em;
+  max-width: 9em;
+  overflow-wrap: anywhere;
 }
 
 #callsign-popup {
