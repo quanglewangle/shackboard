@@ -37,7 +37,12 @@ html, body {
   border: 1px solid var(--border);
   border-radius: 8px;
   overflow: hidden;
-  min-height: 320px;
+  aspect-ratio: 2 / 1;
+  min-width: 280px;
+  /* Without this, #app's default align-items: stretch expands this panel's
+     height to match its flex-row sibling (#side-panels' content height),
+     silently overriding aspect-ratio. */
+  align-self: start;
 }
 
 #map {

@@ -129,15 +129,20 @@ const HamMap = (() => {
   }
 
   async function init() {
-    resize();
     await loadCoastlines();
-    rebuildLandPaths(canvas.clientWidth, canvas.clientHeight);
-    window.addEventListener('resize', () => {
+    // ResizeObserver (rather than a manual call + window 'resize' listener)
+    // because its first callback is guaranteed to fire after layout has
+    // actually settled — a manual resize() call here would run mid-parse,
+    // before the flex/aspect-ratio layout of #map-panel has stabilized,
+    // and capture a stale box size. It also naturally catches later size
+    // changes that aren't triggered by a window resize (e.g. a sibling
+    // panel's content changing #map-panel's stretched size).
+    const ro = new ResizeObserver(() => {
       resize();
       rebuildLandPaths(canvas.clientWidth, canvas.clientHeight);
       draw();
     });
-    draw();
+    ro.observe(canvas.parentElement);
   }
 
   return { init, draw, setMarkers, addMarker };
