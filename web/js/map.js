@@ -128,6 +128,10 @@ const HamMap = (() => {
     markers.push(marker);
   }
 
+  function removeMarker(id) {
+    markers = markers.filter(m => m.id !== id);
+  }
+
   async function init() {
     await loadCoastlines();
     // ResizeObserver (rather than a manual call + window 'resize' listener)
@@ -145,5 +149,5 @@ const HamMap = (() => {
     ro.observe(canvas.parentElement);
   }
 
-  return { init, draw, setMarkers, addMarker };
+  return { init, draw, setMarkers, addMarker, removeMarker };
 })();
