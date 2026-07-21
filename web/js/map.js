@@ -1,5 +1,6 @@
 // Renders the world map: embedded vector coastlines (Canvas Path2D) plus a
-// grayline/terminator overlay and QRZ-derived markers. Static equirectangular
+// grayline/terminator overlay, QRZ-derived markers, and great-circle lines
+// from the home marker to every other marker. Static equirectangular
 // projection — this is a fixed full-disk display, not pannable/zoomable, so
 // no tile library is needed.
 
@@ -55,6 +56,56 @@ const HamMap = (() => {
     landPaths = (HamMap._rings || []).map(ring => ringToPath(ring, w, h));
   }
 
+  // Points along the great-circle path from (lat1,lon1) to (lat2,lon2),
+  // via spherical interpolation (slerp) between the two unit vectors —
+  // standard intermediate-point-on-great-circle formula.
+  function greatCirclePoints(lat1, lon1, lat2, lon2, steps) {
+    const toRad = d => d * Math.PI / 180;
+    const toDeg = r => r * 180 / Math.PI;
+    const phi1 = toRad(lat1), lam1 = toRad(lon1);
+    const phi2 = toRad(lat2), lam2 = toRad(lon2);
+
+    const delta = 2 * Math.asin(Math.sqrt(
+      Math.sin((phi2 - phi1) / 2) ** 2 +
+      Math.cos(phi1) * Math.cos(phi2) * Math.sin((lam2 - lam1) / 2) ** 2
+    ));
+    if (delta === 0 || Number.isNaN(delta)) return [[lon1, lat1]];
+
+    const points = [];
+    for (let i = 0; i <= steps; i++) {
+      const f = i / steps;
+      const a = Math.sin((1 - f) * delta) / Math.sin(delta);
+      const b = Math.sin(f * delta) / Math.sin(delta);
+      const x = a * Math.cos(phi1) * Math.cos(lam1) + b * Math.cos(phi2) * Math.cos(lam2);
+      const y = a * Math.cos(phi1) * Math.sin(lam1) + b * Math.cos(phi2) * Math.sin(lam2);
+      const z = a * Math.sin(phi1) + b * Math.sin(phi2);
+      const phi = Math.atan2(z, Math.sqrt(x * x + y * y));
+      const lam = Math.atan2(y, x);
+      points.push([toDeg(lam), toDeg(phi)]);
+    }
+    return points;
+  }
+
+  // A great-circle line drawn on a flat equirectangular map has to break
+  // into a fresh subpath wherever it crosses the antimeridian, or it draws
+  // a bogus line straight across the map instead of exiting one edge and
+  // re-entering the other.
+  function greatCirclePath(lat1, lon1, lat2, lon2, w, h) {
+    const points = greatCirclePoints(lat1, lon1, lat2, lon2, 64);
+    const path = new Path2D();
+    let prevLon = null;
+    points.forEach(([lon, lat], i) => {
+      const [x, y] = project(lon, lat, w, h);
+      if (i === 0 || (prevLon !== null && Math.abs(lon - prevLon) > 180)) {
+        path.moveTo(x, y);
+      } else {
+        path.lineTo(x, y);
+      }
+      prevLon = lon;
+    });
+    return path;
+  }
+
   function nightPolygonPath(date, w, h) {
     const points = Grayline.terminatorPoints(date);
     const { lat: subLat } = Grayline.subsolarPoint(date);
@@ -101,6 +152,16 @@ const HamMap = (() => {
     ctx.moveTo(0, h / 2);
     ctx.lineTo(w, h / 2);
     ctx.stroke();
+
+    const home = markers.find(m => m.id === 'home');
+    if (home) {
+      ctx.strokeStyle = 'rgba(224, 178, 62, 0.5)';
+      ctx.lineWidth = 1;
+      for (const m of markers) {
+        if (m.id === 'home') continue;
+        ctx.stroke(greatCirclePath(home.lat, home.lon, m.lat, m.lon, w, h));
+      }
+    }
 
     for (const m of markers) {
       const [x, y] = project(m.lon, m.lat, w, h);
