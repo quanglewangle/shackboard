@@ -4,6 +4,17 @@ const Cluster = (() => {
   const status = document.getElementById('spots-status');
   const body = document.getElementById('spots-body');
 
+  // Spot fields (comment especially) are free text from a public DX
+  // cluster feed — anyone spotting can put arbitrary characters in there,
+  // e.g. a real captured comment once contained a literal "<TR>" (a grid
+  // exchange convention), which a browser reads as an actual <tr> tag if
+  // inserted unescaped into this table's innerHTML.
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+    }[c]));
+  }
+
   // call -> {lat, lon} | null (null = looked up, not resolvable). Persists
   // for the life of the page so repeated polls don't re-hit the QRZ lookup
   // for calls already resolved — most polls only see a couple of new calls.
@@ -37,7 +48,7 @@ const Cluster = (() => {
     for (const s of top) {
       const geo = geoCache.get(s.dx_call);
       if (geo) {
-        HamMap.addMarker({ id: 'spot-' + s.dx_call, lat: geo.lat, lon: geo.lon, label: s.dx_call, color: '#e0b23e' });
+        HamMap.addMarker({ id: 'spot-' + s.dx_call, lat: geo.lat, lon: geo.lon, label: s.dx_call, color: BandColors.forBand(s.band) });
       }
     }
     HamMap.draw();
@@ -53,12 +64,12 @@ const Cluster = (() => {
       const workedClass = s.worked_band ? 'worked-band' : (s.worked_any ? 'worked-any' : '');
       return `
       <tr class="${workedClass}">
-        <td>${s.time_utc}</td>
-        <td>${s.band}</td>
+        <td>${escapeHtml(s.time_utc)}</td>
+        <td>${escapeHtml(s.band)}</td>
         <td>${s.freq_khz.toFixed(1)}</td>
-        <td class="dx-call" data-call="${s.dx_call}">${s.dx_call}</td>
-        <td>${s.spotter}</td>
-        <td class="comment">${s.comment}</td>
+        <td class="dx-call" data-call="${escapeHtml(s.dx_call)}" data-band="${escapeHtml(s.band)}">${escapeHtml(s.dx_call)}</td>
+        <td>${escapeHtml(s.spotter)}</td>
+        <td class="comment">${escapeHtml(s.comment)}</td>
       </tr>
     `;
     }).join('');
@@ -72,10 +83,11 @@ const Cluster = (() => {
 
     body.querySelectorAll('.dx-call').forEach(el => {
       el.addEventListener('click', () => {
-        // Same marker id scheme as plotSpotMarkers, so clicking a spot
-        // that's already auto-plotted just re-confirms it rather than
-        // creating a redundant second marker at the same position.
-        Qrz.lookupAndShow(el.dataset.call, 'spot-' + el.dataset.call, '#e0b23e');
+        // Same marker id scheme and band color as plotSpotMarkers, so
+        // clicking a spot that's already auto-plotted just re-confirms it
+        // rather than creating a redundant, differently-colored marker at
+        // the same position.
+        Qrz.lookupAndShow(el.dataset.call, 'spot-' + el.dataset.call, BandColors.forBand(el.dataset.band));
       });
     });
   }

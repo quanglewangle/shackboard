@@ -15,7 +15,7 @@ const SpaceWx = (() => {
   function render(data) {
     const rows = (data.bands || []).map(b => `
       <tr>
-        <td>${b.band}</td>
+        <td><span class="band-swatch" style="background:${BandColors.forGroupLabel(b.band)}"></span>${b.band}</td>
         <td class="${condClass(b.day)}">${b.day || '?'}</td>
         <td class="${condClass(b.night)}">${b.night || '?'}</td>
       </tr>

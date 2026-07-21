@@ -7,18 +7,12 @@
   LogStatus.start(5 * 60 * 1000);
 
   const utcEl = document.getElementById('clock-utc');
-  const localEl = document.getElementById('clock-local');
-  const localLabelEl = document.getElementById('clock-local-label');
-  try {
-    localLabelEl.textContent = Intl.DateTimeFormat().resolvedOptions().timeZone || 'LOCAL';
-  } catch (e) { /* keep default label */ }
 
   function pad(n) { return String(n).padStart(2, '0'); }
 
   function tick() {
     const now = new Date();
-    utcEl.textContent = `${pad(now.getUTCHours())}:${pad(now.getUTCMinutes())}:${pad(now.getUTCSeconds())}`;
-    localEl.textContent = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+    utcEl.textContent = `${pad(now.getUTCHours())}:${pad(now.getUTCMinutes())}:${pad(now.getUTCSeconds())}Z`;
     HamMap.draw();
   }
   tick();

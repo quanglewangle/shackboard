@@ -155,12 +155,17 @@ const HamMap = (() => {
 
     const home = markers.find(m => m.id === 'home');
     if (home) {
-      ctx.strokeStyle = 'rgba(224, 178, 62, 0.5)';
+      // Each line takes its color from the marker it leads to (band-coded
+      // for spots, via BandColors — see cluster.js), at reduced opacity so
+      // it reads as a line rather than competing with the solid dots.
       ctx.lineWidth = 1;
+      ctx.globalAlpha = 0.5;
       for (const m of markers) {
         if (m.id === 'home') continue;
+        ctx.strokeStyle = m.color || '#e0b23e';
         ctx.stroke(greatCirclePath(home.lat, home.lon, m.lat, m.lon, w, h));
       }
+      ctx.globalAlpha = 1;
     }
 
     for (const m of markers) {
