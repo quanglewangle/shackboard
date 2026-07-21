@@ -22,7 +22,7 @@ Then open http://localhost:8093/.
 | Var | Default | Purpose |
 |---|---|---|
 | `SHACKBOARD_PORT` | `8093` | listen port |
-| `SHACKBOARD_CLUSTER_HOST` | `dxc.ve7cc.net:23` | DX cluster telnet endpoint |
+| `SHACKBOARD_CLUSTER_HOST` | `dxspider.co.uk:7300` | DX cluster telnet endpoint |
 | `SHACKBOARD_CLUSTER_CALL` | *(required)* | callsign used to log into the cluster |
 | `SHACKBOARD_SPACEWX_URL` | `https://www.hamqsl.com/solarxml.php` | propagation feed |
 | `SHACKBOARD_SPOT_BUFFER_SIZE` | `200` | spot ring buffer capacity |

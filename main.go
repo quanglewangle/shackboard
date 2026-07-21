@@ -27,7 +27,7 @@ var webFS embed.FS
 
 func main() {
 	port := getenv("SHACKBOARD_PORT", "8093")
-	clusterHost := getenv("SHACKBOARD_CLUSTER_HOST", "dxc.ve7cc.net:23")
+	clusterHost := getenv("SHACKBOARD_CLUSTER_HOST", "dxspider.co.uk:7300")
 	clusterCall := os.Getenv("SHACKBOARD_CLUSTER_CALL")
 	if clusterCall == "" {
 		log.Fatal("SHACKBOARD_CLUSTER_CALL is required (the callsign to log into the DX cluster with)")
