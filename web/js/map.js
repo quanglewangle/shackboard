@@ -172,12 +172,54 @@ const HamMap = (() => {
       ctx.strokeStyle = '#0b0f14';
       ctx.lineWidth = 1.5;
       ctx.stroke();
-      if (m.label) {
-        ctx.fillStyle = '#d8e1ea';
-        ctx.font = '11px sans-serif';
-        ctx.fillText(m.label, x + 8, y + 4);
+    }
+
+    // Labels are placed as a separate pass, after all dots, so each label's
+    // candidate positions can be checked against every other label already
+    // placed — markers close together on the map (common for e.g. several
+    // European spots at once) would otherwise render illegible stacked text.
+    ctx.fillStyle = '#d8e1ea';
+    ctx.font = '11px sans-serif';
+    const placedLabels = [];
+    for (const m of markers) {
+      if (!m.label) continue;
+      const [x, y] = project(m.lon, m.lat, w, h);
+      const pos = placeLabel(x, y, ctx.measureText(m.label).width, 11, placedLabels);
+      // No position at any tried distance was free — with several markers
+      // packed into a very small area, that happens. Skipping the label is
+      // more readable than forcing it on top of another one.
+      if (pos) ctx.fillText(m.label, pos[0], pos[1]);
+    }
+  }
+
+  function rectsOverlap(a, b) {
+    return a.x0 < b.x1 && a.x1 > b.x0 && a.y0 < b.y1 && a.y1 > b.y0;
+  }
+
+  // Tries candidate positions on rings of increasing radius around the
+  // marker dot at (x, y), picking the first whose label bounding box
+  // doesn't overlap any already-placed label. A single ring right at the
+  // dot (the original fixed-offset approach) runs out of room fast when
+  // several markers cluster within a few pixels of each other — pushing
+  // outward to a wider ring gives later labels somewhere left to go.
+  function placeLabel(x, y, textWidth, textHeight, placedLabels) {
+    const radii = [8, 16, 24, 32, 40];
+    const anglesPerRing = 8;
+    for (const r of radii) {
+      for (let i = 0; i < anglesPerRing; i++) {
+        const theta = (i / anglesPerRing) * Math.PI * 2;
+        const ax = x + Math.cos(theta) * r;
+        const ay = y + Math.sin(theta) * r;
+        const cx = ax - textWidth / 2;
+        const cy = ay + textHeight / 2;
+        const rect = { x0: cx, y0: cy - textHeight, x1: cx + textWidth, y1: cy };
+        if (!placedLabels.some(p => rectsOverlap(rect, p))) {
+          placedLabels.push(rect);
+          return [cx, cy];
+        }
       }
     }
+    return null;
   }
 
   function setMarkers(next) {
