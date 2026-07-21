@@ -226,3 +226,12 @@ tr.worked-band { border-left: 3px solid var(--poor); }
 #callsign-popup-body dl { margin: 0; }
 #callsign-popup-body dt { color: var(--text-dim); font-size: 0.7rem; margin-top: 6px; }
 #callsign-popup-body dd { margin: 0; font-size: 0.95rem; }
+
+.prior-contact { margin: 8px 0 0; font-size: 0.8rem; color: var(--text-dim); }
+.more-contacts { color: var(--accent); text-decoration: none; }
+.more-contacts-list {
+  margin: 4px 0 0;
+  padding-left: 16px;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}

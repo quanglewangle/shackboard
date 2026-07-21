@@ -45,6 +45,7 @@ Your home QTH isn't backend config — enter your callsign in the UI once
 | GET | `/api/spots` | DX cluster spots, `?limit=N` (default 100) |
 | GET | `/api/park-spots` | merged POTA + SOTA spots |
 | GET | `/api/log` | worked-before index status: `{"loaded","qso_count","synced_at"}` |
+| GET | `/api/log/contacts/{call}` | past QSOs with `call`, most recent first: `{"call","loaded","contacts":[{"date","time","band","mode"}]}` |
 | GET | `/health` | liveness + subsystem status |
 
 `/api/spots` and `/api/park-spots` entries are decorated with `worked_any`/

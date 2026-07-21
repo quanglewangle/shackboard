@@ -64,6 +64,25 @@ func TestParse(t *testing.T) {
 			wantQSOs:    []QSO{{Call: "W1AW", Band: ""}},
 			wantRecords: 1,
 		},
+		{
+			// Field order, values, and lengths taken from a real QRZ Logbook
+			// export (see qrzlogbook package docs). qrzcom_qso_download_date
+			// is QRZ's own "when we ingested this" metadata, easily confused
+			// with qso_date (the actual contact date) — must not be read
+			// instead of it.
+			name: "real QRZ Logbook record shape: qso_date/time_on distinct from qrzcom_qso_download_date",
+			data: "<call:5>YT3PL<qrzcom_qso_download_date:8>20260721<band:3>20m" +
+				"<qso_date:8>20240118<qso_date_off:8>20240118<time_off:4>1715" +
+				"<mode:3>SSB<time_on:4>1715<eor>",
+			wantQSOs:    []QSO{{Call: "YT3PL", Band: "20m", Mode: "SSB", Date: "20240118", Time: "1715"}},
+			wantRecords: 1,
+		},
+		{
+			name:        "6-digit TIME_ON (HHMMSS) truncated to HHMM",
+			data:        "<call:4>W1AW<qso_date:8>20240118<time_on:6>171530<eor>",
+			wantQSOs:    []QSO{{Call: "W1AW", Date: "20240118", Time: "1715"}},
+			wantRecords: 1,
+		},
 	}
 
 	for _, tc := range cases {
@@ -115,5 +134,33 @@ func TestIndexWorkedAnyAndBand(t *testing.T) {
 	}
 	if idx.WorkedAny("VK2ABC") {
 		t.Error("expected WorkedAny(VK2ABC) false — never logged")
+	}
+}
+
+func TestIndexContacts(t *testing.T) {
+	idx := NewIndex()
+	idx.Replace([]QSO{
+		{Call: "W1AW", Band: "40m", Mode: "CW", Date: "20230601", Time: "1000"},
+		{Call: "W1AW", Band: "20m", Mode: "SSB", Date: "20240118", Time: "1715"},
+		{Call: "W1AW", Band: "15m", Mode: "FT8", Date: "20240118", Time: "0900"},
+	}, time.Now())
+
+	got := idx.Contacts("w1aw") // lowercase, exercises case-insensitivity
+	want := []QSO{
+		{Call: "W1AW", Band: "20m", Mode: "SSB", Date: "20240118", Time: "1715"},
+		{Call: "W1AW", Band: "15m", Mode: "FT8", Date: "20240118", Time: "0900"},
+		{Call: "W1AW", Band: "40m", Mode: "CW", Date: "20230601", Time: "1000"},
+	}
+	if len(got) != len(want) {
+		t.Fatalf("got %d contacts, want %d: %+v", len(got), len(want), got)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("Contacts[%d] = %+v, want %+v", i, got[i], want[i])
+		}
+	}
+
+	if len(idx.Contacts("VK2ABC")) != 0 {
+		t.Error("expected no contacts for a call never logged")
 	}
 }
