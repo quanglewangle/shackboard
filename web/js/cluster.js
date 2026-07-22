@@ -90,7 +90,7 @@ const Cluster = (() => {
       <tr class="${workedClass}">
         <td>${escapeHtml(s.time_utc)}</td>
         <td>${escapeHtml(s.band)}</td>
-        <td>${s.freq_khz.toFixed(1)}</td>
+        <td style="color:${BandColors.forBand(s.band)}">${s.freq_khz.toFixed(1)}</td>
         <td class="dx-call" data-call="${escapeHtml(s.dx_call)}" data-band="${escapeHtml(s.band)}">${escapeHtml(s.dx_call)}</td>
         <td>${escapeHtml(s.spotter)}</td>
         <td class="comment">${escapeHtml(s.comment)}</td>
