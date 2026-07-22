@@ -1,8 +1,8 @@
 // Renders the world map: embedded vector coastlines (Canvas Path2D) plus a
 // grayline/terminator overlay, QRZ-derived markers, and great-circle lines
-// from the home marker to every other marker. Static equirectangular
-// projection — this is a fixed full-disk display, not pannable/zoomable, so
-// no tile library is needed.
+// (spotter -> DX station per spot, not tied to the home marker — see
+// cluster.js). Static equirectangular projection — this is a fixed
+// full-disk display, not pannable/zoomable, so no tile library is needed.
 
 const HamMap = (() => {
   const canvas = document.getElementById('map');
@@ -10,6 +10,7 @@ const HamMap = (() => {
 
   let landPaths = [];
   let markers = []; // { lat, lon, label, color }
+  let lines = []; // { lat1, lon1, lat2, lon2, color }
 
   function resize() {
     const rect = canvas.parentElement.getBoundingClientRect();
@@ -153,20 +154,16 @@ const HamMap = (() => {
     ctx.lineTo(w, h / 2);
     ctx.stroke();
 
-    const home = markers.find(m => m.id === 'home');
-    if (home) {
-      // Each line takes its color from the marker it leads to (band-coded
-      // for spots, via BandColors — see cluster.js), at reduced opacity so
-      // it reads as a line rather than competing with the solid dots.
-      ctx.lineWidth = 1;
-      ctx.globalAlpha = 0.5;
-      for (const m of markers) {
-        if (m.id === 'home') continue;
-        ctx.strokeStyle = m.color || '#e0b23e';
-        ctx.stroke(greatCirclePath(home.lat, home.lon, m.lat, m.lon, w, h));
-      }
-      ctx.globalAlpha = 1;
+    // Each line's color is band-coded (via BandColors — see cluster.js), at
+    // reduced opacity so it reads as a line rather than competing with the
+    // solid marker dots.
+    ctx.lineWidth = 1;
+    ctx.globalAlpha = 0.5;
+    for (const line of lines) {
+      ctx.strokeStyle = line.color || '#e0b23e';
+      ctx.stroke(greatCirclePath(line.lat1, line.lon1, line.lat2, line.lon2, w, h));
     }
+    ctx.globalAlpha = 1;
 
     for (const m of markers) {
       const [x, y] = project(m.lon, m.lat, w, h);
@@ -231,6 +228,13 @@ const HamMap = (() => {
     markers = next;
   }
 
+  // Full replace, unlike markers' add/remove — nothing else manages lines
+  // independently (markers need incremental add/remove because the home
+  // marker is set once, separately, and must survive cluster.js's polling).
+  function setLines(next) {
+    lines = next;
+  }
+
   function addMarker(marker) {
     markers = markers.filter(m => m.id !== marker.id);
     markers.push(marker);
@@ -257,5 +261,5 @@ const HamMap = (() => {
     ro.observe(canvas.parentElement);
   }
 
-  return { init, draw, setMarkers, addMarker, removeMarker };
+  return { init, draw, setMarkers, addMarker, removeMarker, setLines };
 })();

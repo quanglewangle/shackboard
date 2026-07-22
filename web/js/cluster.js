@@ -43,14 +43,26 @@ const Cluster = (() => {
     }
     plottedCalls = currentCalls;
 
-    await Promise.all(top.map(s => resolveGeo(s.dx_call)));
+    // Lines are spotter -> DX station (who actually heard whom), so both
+    // ends need resolving, not just the DX call.
+    await Promise.all(top.flatMap(s => [resolveGeo(s.dx_call), resolveGeo(s.spotter)]));
 
+    const lines = [];
     for (const s of top) {
-      const geo = geoCache.get(s.dx_call);
-      if (geo) {
-        HamMap.addMarker({ id: 'spot-' + s.dx_call, lat: geo.lat, lon: geo.lon, label: s.dx_call, color: BandColors.forBand(s.band) });
+      const dxGeo = geoCache.get(s.dx_call);
+      if (dxGeo) {
+        HamMap.addMarker({ id: 'spot-' + s.dx_call, lat: dxGeo.lat, lon: dxGeo.lon, label: s.dx_call, color: BandColors.forBand(s.band) });
+      }
+      const spotterGeo = geoCache.get(s.spotter);
+      if (dxGeo && spotterGeo) {
+        lines.push({
+          lat1: spotterGeo.lat, lon1: spotterGeo.lon,
+          lat2: dxGeo.lat, lon2: dxGeo.lon,
+          color: BandColors.forBand(s.band),
+        });
       }
     }
+    HamMap.setLines(lines);
     HamMap.draw();
   }
 
