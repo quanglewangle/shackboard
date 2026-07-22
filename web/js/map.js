@@ -264,6 +264,25 @@ const HamMap = (() => {
     markers = markers.filter(m => m.id !== id);
   }
 
+  // Nearest marker within a few pixels of (x, y) — canvas coordinates in
+  // the same CSS-pixel space project() itself outputs (canvas.clientWidth/
+  // clientHeight, not the device-pixel canvas.width/height), so no dpr
+  // math is needed to match what a mouse event reports.
+  function markerAt(x, y) {
+    const w = canvas.clientWidth, h = canvas.clientHeight;
+    const hitRadius = 8;
+    let nearest = null, nearestDist = hitRadius;
+    for (const m of markers) {
+      const [mx, my] = project(m.lon, m.lat, w, h);
+      const dist = Math.hypot(x - mx, y - my);
+      if (dist <= nearestDist) {
+        nearest = m;
+        nearestDist = dist;
+      }
+    }
+    return nearest;
+  }
+
   async function init() {
     await loadCoastlines();
     // ResizeObserver (rather than a manual call + window 'resize' listener)
@@ -279,6 +298,22 @@ const HamMap = (() => {
       draw();
     });
     ro.observe(canvas.parentElement);
+
+    canvas.addEventListener('click', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const m = markerAt(e.clientX - rect.left, e.clientY - rect.top);
+      // Marker labels are always set to the callsign they represent (home,
+      // DX, and spotter markers alike — see qrz.js/cluster.js), and Qrz is
+      // a shared global other panel modules already call into directly
+      // (same as cluster.js does for table-row clicks), so this reuses the
+      // exact same popup path rather than inventing a second one.
+      if (m && m.label) Qrz.lookupAndShow(m.label, m.id, m.color);
+    });
+    canvas.addEventListener('mousemove', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const m = markerAt(e.clientX - rect.left, e.clientY - rect.top);
+      canvas.style.cursor = m ? 'pointer' : 'default';
+    });
   }
 
   return { init, draw, setMarkers, addMarker, removeMarker, setLines, setRegion };
