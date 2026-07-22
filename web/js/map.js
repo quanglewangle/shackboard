@@ -1,12 +1,22 @@
 // Renders the world map: embedded vector coastlines (Canvas Path2D) plus a
 // grayline/terminator overlay, QRZ-derived markers, and great-circle lines
 // (spotter -> DX station per spot, not tied to the home marker — see
-// cluster.js). Static equirectangular projection — this is a fixed
-// full-disk display, not pannable/zoomable, so no tile library is needed.
+// cluster.js). Static equirectangular projection, viewing either the whole
+// world or one of a few fixed regional crops (setRegion) — not a general
+// pannable/zoomable map, so no tile library or continuous zoom/pan state
+// is needed.
 
 const HamMap = (() => {
   const canvas = document.getElementById('map');
   const ctx = canvas.getContext('2d');
+
+  // Bounding boxes chosen close to 2:1 lon:lat span to roughly match
+  // #map-panel's fixed aspect ratio and minimize stretch distortion.
+  const VIEWS = {
+    world: { minLon: -180, maxLon: 180, minLat: -90, maxLat: 90 },
+    europe: { minLon: -25, maxLon: 45, minLat: 35, maxLat: 70 },
+  };
+  let currentView = VIEWS.world;
 
   let landPaths = [];
   let markers = []; // { lat, lon, label, color }
@@ -23,7 +33,8 @@ const HamMap = (() => {
   }
 
   function project(lon, lat, w, h) {
-    return [(lon + 180) / 360 * w, (90 - lat) / 180 * h];
+    const { minLon, maxLon, minLat, maxLat } = currentView;
+    return [(lon - minLon) / (maxLon - minLon) * w, (maxLat - lat) / (maxLat - minLat) * h];
   }
 
   function ringToPath(ring, w, h) {
@@ -228,6 +239,15 @@ const HamMap = (() => {
     markers = next;
   }
 
+  // landPaths are pre-baked Path2D objects at specific pixel coordinates
+  // (from whatever project() did at build time) — changing the view
+  // without rebuilding them would keep showing the old view's coastlines.
+  function setRegion(name) {
+    currentView = VIEWS[name] || VIEWS.world;
+    rebuildLandPaths(canvas.clientWidth, canvas.clientHeight);
+    draw();
+  }
+
   // Full replace, unlike markers' add/remove — nothing else manages lines
   // independently (markers need incremental add/remove because the home
   // marker is set once, separately, and must survive cluster.js's polling).
@@ -261,5 +281,5 @@ const HamMap = (() => {
     ro.observe(canvas.parentElement);
   }
 
-  return { init, draw, setMarkers, addMarker, removeMarker, setLines };
+  return { init, draw, setMarkers, addMarker, removeMarker, setLines, setRegion };
 })();

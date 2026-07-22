@@ -54,4 +54,12 @@
     input.value = savedCall;
     setHomeCallsign(savedCall);
   }
+
+  document.querySelectorAll('#map-view-toggle button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#map-view-toggle button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      HamMap.setRegion(btn.dataset.view);
+    });
+  });
 })();
