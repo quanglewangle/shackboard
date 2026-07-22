@@ -19,7 +19,7 @@ const Cluster = (() => {
   // for the life of the page so repeated polls don't re-hit the QRZ lookup
   // for calls already resolved — most polls only see a couple of new calls.
   const geoCache = new Map();
-  let plottedCalls = new Set();
+  let plottedMarkerIds = new Set();
 
   async function resolveGeo(call) {
     if (geoCache.has(call)) return geoCache.get(call);
@@ -36,32 +36,44 @@ const Cluster = (() => {
 
   async function plotSpotMarkers(spots) {
     const top = spots.slice(0, 10);
-    const currentCalls = new Set(top.map(s => s.dx_call));
-
-    for (const call of plottedCalls) {
-      if (!currentCalls.has(call)) HamMap.removeMarker('spot-' + call);
-    }
-    plottedCalls = currentCalls;
 
     // Lines are spotter -> DX station (who actually heard whom), so both
-    // ends need resolving, not just the DX call.
+    // ends need resolving, not just the DX call — and both ends get a
+    // marker plotted too, or a line would appear to dangle at whichever
+    // end has no dot/callsign to identify it.
     await Promise.all(top.flatMap(s => [resolveGeo(s.dx_call), resolveGeo(s.spotter)]));
 
+    const currentIds = new Set();
     const lines = [];
     for (const s of top) {
       const dxGeo = geoCache.get(s.dx_call);
-      if (dxGeo) {
-        HamMap.addMarker({ id: 'spot-' + s.dx_call, lat: dxGeo.lat, lon: dxGeo.lon, label: s.dx_call, color: BandColors.forBand(s.band) });
-      }
       const spotterGeo = geoCache.get(s.spotter);
+      const color = BandColors.forBand(s.band);
+
+      if (dxGeo) {
+        const id = 'spot-' + s.dx_call;
+        currentIds.add(id);
+        HamMap.addMarker({ id, lat: dxGeo.lat, lon: dxGeo.lon, label: s.dx_call, color });
+      }
+      if (spotterGeo) {
+        const id = 'spotter-' + s.spotter;
+        currentIds.add(id);
+        HamMap.addMarker({ id, lat: spotterGeo.lat, lon: spotterGeo.lon, label: s.spotter, color });
+      }
       if (dxGeo && spotterGeo) {
         lines.push({
           lat1: spotterGeo.lat, lon1: spotterGeo.lon,
           lat2: dxGeo.lat, lon2: dxGeo.lon,
-          color: BandColors.forBand(s.band),
+          color,
         });
       }
     }
+
+    for (const id of plottedMarkerIds) {
+      if (!currentIds.has(id)) HamMap.removeMarker(id);
+    }
+    plottedMarkerIds = currentIds;
+
     HamMap.setLines(lines);
     HamMap.draw();
   }
