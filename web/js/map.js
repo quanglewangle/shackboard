@@ -168,7 +168,7 @@ const HamMap = (() => {
     // Each line's color is band-coded (via BandColors — see cluster.js), at
     // reduced opacity so it reads as a line rather than competing with the
     // solid marker dots.
-    ctx.lineWidth = 1;
+    ctx.lineWidth = 2;
     ctx.globalAlpha = 0.5;
     for (const line of lines) {
       ctx.strokeStyle = line.color || '#e0b23e';
