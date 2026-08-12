@@ -33,6 +33,24 @@ func TestCountry(t *testing.T) {
 	}
 }
 
+func TestLocate(t *testing.T) {
+	// cty.dat's own header line for Japan is
+	// "Japan:  25:  45:  AS:  36.40: -138.38:  -9.0:  JA:" — cty.dat gives
+	// longitude west-positive, so the standard (east-positive) value is
+	// the negation, 138.38.
+	entity, ok := Locate("JA1XYZ")
+	if !ok {
+		t.Fatal("Locate(JA1XYZ) not found")
+	}
+	if entity.Name != "Japan" || entity.Lat != 36.40 || entity.Lon != 138.38 {
+		t.Errorf("Locate(JA1XYZ) = %+v, want {Japan 36.40 138.38}", entity)
+	}
+
+	if _, ok := Locate("QQ9ZZZ"); ok {
+		t.Error("Locate(QQ9ZZZ) should not resolve")
+	}
+}
+
 func TestParseCtyPopulatesTables(t *testing.T) {
 	if len(prefixTable) < 300 {
 		t.Errorf("prefixTable has only %d entries, expected hundreds", len(prefixTable))

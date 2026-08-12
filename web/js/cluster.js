@@ -37,6 +37,14 @@ const Cluster = (() => {
         Qrz.lookupAndShow(el.dataset.call, 'spot', '#e0b23e');
       });
     });
+
+    // Auto-plot every spot with a resolved DXCC location (approximate —
+    // entity center, not the actual station) as a small dot, distinct
+    // from the brighter single pin a clicked callsign gets via Qrz.
+    HamMap.setGroup('dxspots', data.spots
+      .filter(s => s.country)
+      .map(s => ({ id: 'dx-' + s.dx_call, lat: s.lat, lon: s.lon, color: '#e0b23e', r: 3 })));
+    HamMap.draw();
   }
 
   async function poll() {

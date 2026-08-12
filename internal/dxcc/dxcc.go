@@ -1,14 +1,15 @@
-// Package dxcc resolves a callsign to its DXCC entity (country) name using
-// the "cty.dat" prefix table published by country-files.com (AD1C), which
-// is maintained specifically for embedding in ham radio software. See
-// cty.dat's own comments for provenance; it's re-fetched from
-// https://www.country-files.com/cty/cty.dat occasionally, not written by
-// hand — don't hand-edit it, replace the whole file instead.
+// Package dxcc resolves a callsign to its DXCC entity (country name plus
+// an approximate lat/lon) using the "cty.dat" prefix table published by
+// country-files.com (AD1C), which is maintained specifically for embedding
+// in ham radio software. See cty.dat's own comments for provenance; it's
+// re-fetched from https://www.country-files.com/cty/cty.dat occasionally,
+// not written by hand — don't hand-edit it, replace the whole file instead.
 package dxcc
 
 import (
 	_ "embed"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -20,14 +21,23 @@ var rawCty string
 // "(23)[42]" in "3H0(23)[42]" — irrelevant here, we only want the prefix.
 var modifierRE = regexp.MustCompile(`\([^)]*\)|\[[^\]]*\]|<[^>]*>|\{[^}]*\}|~[^~]*~`)
 
+// Entity is a DXCC entity: a country/territory name plus its approximate
+// center coordinates (the entity's average location, not any individual
+// station's — cty.dat doesn't carry per-station precision).
+type Entity struct {
+	Name string
+	Lat  float64
+	Lon  float64
+}
+
 var (
 	// prefixTable maps a literal prefix (e.g. "W", "KH6") to its DXCC
-	// entity name. Looked up via longest-prefix match.
-	prefixTable = map[string]string{}
+	// entity. Looked up via longest-prefix match.
+	prefixTable = map[string]Entity{}
 	// exactTable maps a full, specific callsign (cty.dat aliases prefixed
-	// with "=") to its DXCC entity name — used for portable operations,
+	// with "=") to its DXCC entity — used for portable operations,
 	// expeditions, etc. that don't follow the entity's normal prefix.
-	exactTable = map[string]string{}
+	exactTable = map[string]Entity{}
 )
 
 func init() {
@@ -41,16 +51,23 @@ func init() {
 // chunk's header has exactly 8 colon-delimited fields (name, CQ zone,
 // ITU zone, continent, lat, lon, UTC offset, primary prefix) followed by
 // the alias list, so SplitN(chunk, ":", 9) isolates the alias text.
+//
+// cty.dat's longitude is given with west positive (the opposite of the
+// usual GPS/web-mapping convention), so it's negated when stored here.
 func parseCty(data string) {
 	for _, chunk := range strings.Split(data, ";") {
 		fields := strings.SplitN(chunk, ":", 9)
 		if len(fields) != 9 {
 			continue // trailing whitespace after the last entity, etc.
 		}
-		country := strings.TrimSpace(fields[0])
-		if country == "" {
+		name := strings.TrimSpace(fields[0])
+		if name == "" {
 			continue
 		}
+		lat, _ := strconv.ParseFloat(strings.TrimSpace(fields[4]), 64)
+		lon, _ := strconv.ParseFloat(strings.TrimSpace(fields[5]), 64)
+		entity := Entity{Name: name, Lat: lat, Lon: -lon}
+
 		for _, alias := range strings.Split(fields[8], ",") {
 			alias = modifierRE.ReplaceAllString(alias, "")
 			alias = strings.TrimSpace(alias)
@@ -58,9 +75,9 @@ func parseCty(data string) {
 				continue
 			}
 			if strings.HasPrefix(alias, "=") {
-				exactTable[strings.ToUpper(alias[1:])] = country
+				exactTable[strings.ToUpper(alias[1:])] = entity
 			} else {
-				prefixTable[strings.ToUpper(alias)] = country
+				prefixTable[strings.ToUpper(alias)] = entity
 			}
 		}
 	}
@@ -76,47 +93,55 @@ var operatingSuffixes = map[string]bool{
 }
 
 // Country returns the DXCC entity name for call, or "" if it can't be
-// resolved. Handles portable-style calls (e.g. "F/W1AW", "W1AW/KH6") by
-// picking whichever "/"-separated part yields the most specific prefix
-// match, which is the same heuristic contest loggers use.
+// resolved. See Locate for the full entity including coordinates.
 func Country(call string) string {
+	entity, _ := Locate(call)
+	return entity.Name
+}
+
+// Locate resolves call to its DXCC entity (name + approximate lat/lon),
+// reporting ok=false if the callsign can't be matched. Handles
+// portable-style calls (e.g. "F/W1AW", "W1AW/KH6") by picking whichever
+// "/"-separated part yields the most specific prefix match, which is the
+// same heuristic contest loggers use.
+func Locate(call string) (entity Entity, ok bool) {
 	call = strings.ToUpper(strings.TrimSpace(call))
 	if call == "" {
-		return ""
+		return Entity{}, false
 	}
-	if country, ok := exactTable[call]; ok {
-		return country
+	if e, found := exactTable[call]; found {
+		return e, true
 	}
 
 	if !strings.Contains(call, "/") {
-		return prefixMatch(call)
+		return prefixMatchLen(call)
 	}
 
-	var best, bestPrefix string
+	var bestPrefix string
 	for _, part := range strings.Split(call, "/") {
 		if part == "" || operatingSuffixes[part] {
 			continue
 		}
-		if country, prefix := prefixMatchLen(part); len(prefix) > len(bestPrefix) {
-			best, bestPrefix = country, prefix
+		if e, prefix, found := prefixMatchLenRaw(part); found && len(prefix) > len(bestPrefix) {
+			entity, ok, bestPrefix = e, true, prefix
 		}
 	}
-	return best
+	return entity, ok
 }
 
-func prefixMatch(call string) string {
-	country, _ := prefixMatchLen(call)
-	return country
+func prefixMatchLen(call string) (Entity, bool) {
+	e, _, ok := prefixMatchLenRaw(call)
+	return e, ok
 }
 
-// prefixMatchLen returns the entity for the longest prefix of call found
-// in prefixTable, along with the matched prefix itself (so callers can
-// compare specificity between candidates).
-func prefixMatchLen(call string) (country, prefix string) {
+// prefixMatchLenRaw returns the entity for the longest prefix of call
+// found in prefixTable, along with the matched prefix itself (so callers
+// can compare specificity between candidates).
+func prefixMatchLenRaw(call string) (entity Entity, prefix string, ok bool) {
 	for i := len(call); i >= 1; i-- {
-		if c, ok := prefixTable[call[:i]]; ok {
-			return c, call[:i]
+		if e, found := prefixTable[call[:i]]; found {
+			return e, call[:i], true
 		}
 	}
-	return "", ""
+	return Entity{}, "", false
 }

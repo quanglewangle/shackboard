@@ -145,17 +145,22 @@ func main() {
 // both a spot source and the worked-before index.
 type decoratedSpot struct {
 	cluster.Spot
-	Country    string `json:"country"`
-	WorkedAny  bool   `json:"worked_any"`
-	WorkedBand bool   `json:"worked_band"`
+	Country    string  `json:"country"`
+	Lat        float64 `json:"lat"`
+	Lon        float64 `json:"lon"`
+	WorkedAny  bool    `json:"worked_any"`
+	WorkedBand bool    `json:"worked_band"`
 }
 
 func decorateSpots(spots []cluster.Spot, idx *adif.Index) []decoratedSpot {
 	out := make([]decoratedSpot, len(spots))
 	for i, s := range spots {
+		entity, _ := dxcc.Locate(s.DXCall)
 		out[i] = decoratedSpot{
 			Spot:       s,
-			Country:    dxcc.Country(s.DXCall),
+			Country:    entity.Name,
+			Lat:        entity.Lat,
+			Lon:        entity.Lon,
 			WorkedAny:  idx.WorkedAny(s.DXCall),
 			WorkedBand: idx.WorkedBand(s.DXCall, s.Band),
 		}

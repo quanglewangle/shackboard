@@ -105,7 +105,7 @@ const HamMap = (() => {
     for (const m of markers) {
       const [x, y] = project(m.lon, m.lat, w, h);
       ctx.beginPath();
-      ctx.arc(x, y, 5, 0, Math.PI * 2);
+      ctx.arc(x, y, m.r || 5, 0, Math.PI * 2);
       ctx.fillStyle = m.color || '#4fb0ff';
       ctx.fill();
       ctx.strokeStyle = '#0b0f14';
@@ -128,6 +128,15 @@ const HamMap = (() => {
     markers.push(marker);
   }
 
+  // Replaces every marker tagged with `group` in one go, leaving markers
+  // added via addMarker (home QTH, click-to-plot) or other groups alone.
+  // Used for bulk-plotting an entire spot list that refreshes on a poll
+  // timer, where individual ids would otherwise accumulate stale dots.
+  function setGroup(group, list) {
+    markers = markers.filter(m => m.group !== group)
+      .concat(list.map(m => ({ ...m, group })));
+  }
+
   async function init() {
     resize();
     await loadCoastlines();
@@ -140,5 +149,5 @@ const HamMap = (() => {
     draw();
   }
 
-  return { init, draw, setMarkers, addMarker };
+  return { init, draw, setMarkers, addMarker, setGroup };
 })();
