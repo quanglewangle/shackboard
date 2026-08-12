@@ -18,6 +18,7 @@ const Cluster = (() => {
         <td>${s.band}</td>
         <td>${s.freq_khz.toFixed(1)}</td>
         <td class="dx-call" data-call="${s.dx_call}">${s.dx_call}</td>
+        <td class="country">${s.country}</td>
         <td>${s.spotter}</td>
         <td class="comment">${s.comment}</td>
       </tr>
@@ -26,7 +27,7 @@ const Cluster = (() => {
 
     body.innerHTML = `
       <table class="spot-table">
-        <thead><tr><th>UTC</th><th>Band</th><th>kHz</th><th>DX</th><th>Spotter</th><th>Comment</th></tr></thead>
+        <thead><tr><th>UTC</th><th>Band</th><th>kHz</th><th>DX</th><th>Country</th><th>Spotter</th><th>Comment</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
     `;

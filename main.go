@@ -14,6 +14,7 @@ import (
 
 	"github.com/quanglewangle/shackboard/internal/adif"
 	"github.com/quanglewangle/shackboard/internal/cluster"
+	"github.com/quanglewangle/shackboard/internal/dxcc"
 	"github.com/quanglewangle/shackboard/internal/parkspots"
 	"github.com/quanglewangle/shackboard/internal/qrzlogbook"
 	"github.com/quanglewangle/shackboard/internal/spacewx"
@@ -144,8 +145,9 @@ func main() {
 // both a spot source and the worked-before index.
 type decoratedSpot struct {
 	cluster.Spot
-	WorkedAny  bool `json:"worked_any"`
-	WorkedBand bool `json:"worked_band"`
+	Country    string `json:"country"`
+	WorkedAny  bool   `json:"worked_any"`
+	WorkedBand bool   `json:"worked_band"`
 }
 
 func decorateSpots(spots []cluster.Spot, idx *adif.Index) []decoratedSpot {
@@ -153,6 +155,7 @@ func decorateSpots(spots []cluster.Spot, idx *adif.Index) []decoratedSpot {
 	for i, s := range spots {
 		out[i] = decoratedSpot{
 			Spot:       s,
+			Country:    dxcc.Country(s.DXCall),
 			WorkedAny:  idx.WorkedAny(s.DXCall),
 			WorkedBand: idx.WorkedBand(s.DXCall, s.Band),
 		}

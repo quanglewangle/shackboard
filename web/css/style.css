@@ -164,6 +164,13 @@ html, body {
   font-weight: 600;
 }
 .spot-table .dx-call:hover { text-decoration: underline; }
+.spot-table .country {
+  color: var(--text-dim);
+  max-width: 8em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .spot-table .comment {
   color: var(--text-dim);
   white-space: normal;
