@@ -16,6 +16,11 @@ type QSO struct {
 	Call string // uppercased, trimmed
 	Band string // lowercase, e.g. "20m" — matches cluster.BandForFreqKHz's convention
 	Mode string // display only, not used for worked-before matching
+	Date string // YYYYMMDD from QSO_DATE, "" if absent — not QSO_DATE_OFF or
+	// QRZ's own qrzcom_qso_download_date (when QRZ ingested the record,
+	// not when the contact happened — confirmed against a real QRZ
+	// Logbook export, both fields are present and easy to mix up).
+	Time string // HHMM from TIME_ON, truncated if the source gives HHMMSS
 }
 
 type ParseResult struct {
@@ -66,10 +71,17 @@ func Parse(data []byte) (result ParseResult, err error) {
 			}
 		}
 
+		timeOn := strings.TrimSpace(fields["TIME_ON"])
+		if len(timeOn) > 4 {
+			timeOn = timeOn[:4]
+		}
+
 		result.QSOs = append(result.QSOs, QSO{
 			Call: call,
 			Band: band,
 			Mode: strings.ToUpper(strings.TrimSpace(fields["MODE"])),
+			Date: strings.TrimSpace(fields["QSO_DATE"]),
+			Time: timeOn,
 		})
 	}
 

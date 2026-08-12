@@ -22,7 +22,7 @@ Then open http://localhost:8093/.
 | Var | Default | Purpose |
 |---|---|---|
 | `SHACKBOARD_PORT` | `8093` | listen port |
-| `SHACKBOARD_CLUSTER_HOST` | `dxc.ve7cc.net:23` | DX cluster telnet endpoint |
+| `SHACKBOARD_CLUSTER_HOST` | `dxspider.co.uk:7300` | DX cluster telnet endpoint |
 | `SHACKBOARD_CLUSTER_CALL` | *(required)* | callsign used to log into the cluster |
 | `SHACKBOARD_SPACEWX_URL` | `https://www.hamqsl.com/solarxml.php` | propagation feed |
 | `SHACKBOARD_SPOT_BUFFER_SIZE` | `200` | spot ring buffer capacity |
@@ -45,6 +45,7 @@ Your home QTH isn't backend config — enter your callsign in the UI once
 | GET | `/api/spots` | DX cluster spots, `?limit=N` (default 100) |
 | GET | `/api/park-spots` | merged POTA + SOTA spots |
 | GET | `/api/log` | worked-before index status: `{"loaded","qso_count","synced_at"}` |
+| GET | `/api/log/contacts/{call}` | past QSOs with `call`, most recent first: `{"call","loaded","contacts":[{"date","time","band","mode"}]}` |
 | GET | `/health` | liveness + subsystem status |
 
 `/api/spots` and `/api/park-spots` entries are decorated with `worked_any`/

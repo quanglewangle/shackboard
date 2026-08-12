@@ -6,6 +6,14 @@ const ParkSpots = (() => {
   const status = document.getElementById('parks-status');
   const body = document.getElementById('parks-body');
 
+  // ref_name especially is free text from the POTA/SOTA feeds — same
+  // unescaped-innerHTML risk as cluster.js's DX spot comments.
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+    }[c]));
+  }
+
   function render(data) {
     const parts = [];
     if (!data.pota_ok) parts.push('POTA down');
@@ -18,12 +26,12 @@ const ParkSpots = (() => {
       const badgeClass = s.program === 'POTA' ? 'prog-pota' : 'prog-sota';
       return `
       <tr class="${workedClass}">
-        <td><span class="prog-badge ${badgeClass}">${s.program}</span></td>
-        <td>${s.band}</td>
+        <td><span class="prog-badge ${badgeClass}">${escapeHtml(s.program)}</span></td>
+        <td>${escapeHtml(s.band)}</td>
         <td>${s.freq_khz.toFixed(1)}</td>
-        <td class="dx-call" data-call="${s.activator}">${s.activator}</td>
-        <td>${s.reference}</td>
-        <td class="ref-name" title="${s.ref_name}">${s.ref_name}</td>
+        <td class="dx-call" data-call="${escapeHtml(s.activator)}">${escapeHtml(s.activator)}</td>
+        <td>${escapeHtml(s.reference)}</td>
+        <td class="ref-name" title="${escapeHtml(s.ref_name)}">${escapeHtml(s.ref_name)}</td>
       </tr>
     `;
     }).join('');

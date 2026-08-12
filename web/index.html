@@ -11,9 +11,12 @@
 
   <section id="map-panel">
     <canvas id="map"></canvas>
+    <div id="map-view-toggle">
+      <button data-view="world" class="active">World</button>
+      <button data-view="europe">Europe</button>
+    </div>
     <div id="clocks">
-      <div class="clock"><span class="clock-label">UTC</span><span id="clock-utc" class="clock-time">--:--:--</span></div>
-      <div class="clock"><span class="clock-label" id="clock-local-label">LOCAL</span><span id="clock-local" class="clock-time">--:--:--</span></div>
+      <span id="clock-utc" class="clock-time">--:--:--Z</span>
     </div>
     <div id="qth-setup">
       <div id="qth-setup-form">
@@ -53,6 +56,7 @@
 
 </div>
 <script src="js/grayline.js"></script>
+<script src="js/bandcolors.js"></script>
 <script src="js/map.js"></script>
 <script src="js/spacewx.js"></script>
 <script src="js/qrz.js"></script>

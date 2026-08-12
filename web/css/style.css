@@ -37,7 +37,12 @@ html, body {
   border: 1px solid var(--border);
   border-radius: 8px;
   overflow: hidden;
-  min-height: 320px;
+  aspect-ratio: 2 / 1;
+  min-width: 280px;
+  /* Without this, #app's default align-items: stretch expands this panel's
+     height to match its flex-row sibling (#side-panels' content height),
+     silently overriding aspect-ratio. */
+  align-self: start;
 }
 
 #map {
@@ -48,18 +53,35 @@ html, body {
 
 #clocks {
   position: absolute;
-  top: 10px;
-  left: 10px;
-  display: flex;
-  gap: 16px;
+  bottom: 10px;
+  right: 10px;
   background: rgba(11, 15, 20, 0.7);
   padding: 6px 12px;
   border-radius: 6px;
 }
 
-.clock { display: flex; flex-direction: column; align-items: center; }
-.clock-label { font-size: 0.7rem; letter-spacing: 0.08em; color: var(--text-dim); }
 .clock-time { font-size: 1.15rem; font-variant-numeric: tabular-nums; }
+
+#map-view-toggle {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  gap: 4px;
+  background: rgba(11, 15, 20, 0.7);
+  padding: 4px;
+  border-radius: 6px;
+}
+#map-view-toggle button {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 0.75rem;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+#map-view-toggle button.active { background: var(--accent); color: var(--bg); }
 
 #qth-setup {
   position: absolute;
@@ -146,6 +168,16 @@ html, body {
 .cond-fair { color: var(--fair); font-weight: 600; }
 .cond-poor { color: var(--poor); font-weight: 600; }
 
+/* Doubles as a key: same colors used for spot markers/great-circle lines
+   on the map, keyed by band via BandColors (bandcolors.js). */
+.band-swatch {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  margin-right: 6px;
+}
+
 #spots-status, #parks-status { color: var(--text-dim); font-size: 0.75rem; margin-bottom: 6px; }
 #spots-status.connected::before, #parks-status.connected::before { content: "\25cf "; color: var(--good); }
 #spots-status.disconnected::before, #parks-status.disconnected::before { content: "\25cf "; color: var(--poor); }
@@ -222,3 +254,12 @@ tr.worked-band { border-left: 3px solid var(--poor); }
 #callsign-popup-body dl { margin: 0; }
 #callsign-popup-body dt { color: var(--text-dim); font-size: 0.7rem; margin-top: 6px; }
 #callsign-popup-body dd { margin: 0; font-size: 0.95rem; }
+
+.prior-contact { margin: 8px 0 0; font-size: 0.8rem; color: var(--text-dim); }
+.more-contacts { color: var(--accent); text-decoration: none; }
+.more-contacts-list {
+  margin: 4px 0 0;
+  padding-left: 16px;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}

@@ -28,7 +28,7 @@ var webFS embed.FS
 
 func main() {
 	port := getenv("SHACKBOARD_PORT", "8093")
-	clusterHost := getenv("SHACKBOARD_CLUSTER_HOST", "dxc.ve7cc.net:23")
+	clusterHost := getenv("SHACKBOARD_CLUSTER_HOST", "dxspider.co.uk:7300")
 	clusterCall := os.Getenv("SHACKBOARD_CLUSTER_CALL")
 	if clusterCall == "" {
 		log.Fatal("SHACKBOARD_CLUSTER_CALL is required (the callsign to log into the DX cluster with)")
@@ -114,6 +114,14 @@ func main() {
 		writeJSON(w, http.StatusOK, logIndex.Status())
 	})
 
+	mux.HandleFunc("GET /api/log/contacts/{call}", func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, http.StatusOK, map[string]any{
+			"call":     r.PathValue("call"),
+			"loaded":   logIndex.Status().Loaded,
+			"contacts": formatContacts(logIndex.Contacts(r.PathValue("call"))),
+		})
+	})
+
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
 		_, wxErr := wxCache.Get()
 		writeJSON(w, http.StatusOK, map[string]any{
@@ -189,6 +197,32 @@ func decorateParkSpots(spots []parkspots.Spot, idx *adif.Index) []decoratedParkS
 			WorkedAny:  idx.WorkedAny(s.Activator),
 			WorkedBand: idx.WorkedBand(s.Activator, s.Band),
 		}
+	}
+	return out
+}
+
+type contact struct {
+	Date string `json:"date"`
+	Time string `json:"time"`
+	Band string `json:"band"`
+	Mode string `json:"mode"`
+}
+
+// formatContacts reformats adif.QSO's raw ADIF date/time strings
+// ("20240118"/"1715") into display-friendly ones ("2024-01-18"/"17:15Z"),
+// passing through as-is (usually empty) if a record is missing either.
+func formatContacts(qsos []adif.QSO) []contact {
+	out := make([]contact, len(qsos))
+	for i, q := range qsos {
+		date := q.Date
+		if len(date) == 8 {
+			date = date[:4] + "-" + date[4:6] + "-" + date[6:8]
+		}
+		t := q.Time
+		if len(t) == 4 {
+			t = t[:2] + ":" + t[2:4] + "Z"
+		}
+		out[i] = contact{Date: date, Time: t, Band: q.Band, Mode: q.Mode}
 	}
 	return out
 }

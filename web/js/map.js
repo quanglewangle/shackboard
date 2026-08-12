@@ -1,11 +1,22 @@
 // Renders the world map: embedded vector coastlines (Canvas Path2D) plus a
-// grayline/terminator overlay and QRZ-derived markers. Static equirectangular
-// projection — this is a fixed full-disk display, not pannable/zoomable, so
-// no tile library is needed.
+// grayline/terminator overlay, QRZ-derived markers, and great-circle lines
+// (spotter -> DX station per spot, not tied to the home marker — see
+// cluster.js). Static equirectangular projection, viewing either the whole
+// world or one of a few fixed regional crops (setRegion) — not a general
+// pannable/zoomable map, so no tile library or continuous zoom/pan state
+// is needed.
 
 const HamMap = (() => {
   const canvas = document.getElementById('map');
   const ctx = canvas.getContext('2d');
+
+  // Bounding boxes chosen close to 2:1 lon:lat span to roughly match
+  // #map-panel's fixed aspect ratio and minimize stretch distortion.
+  const VIEWS = {
+    world: { minLon: -180, maxLon: 180, minLat: -90, maxLat: 90 },
+    europe: { minLon: -25, maxLon: 45, minLat: 35, maxLat: 70 },
+  };
+  let currentView = VIEWS.world;
 
   let landPaths = [];
   let markers = []; // { lat, lon, label, color }
@@ -22,31 +33,8 @@ const HamMap = (() => {
   }
 
   function project(lon, lat, w, h) {
-    return [(lon + 180) / 360 * w, (90 - lat) / 180 * h];
-  }
-
-  // Interpolates `steps` points along the great-circle path between two
-  // lat/lon points (degrees), via spherical linear interpolation (slerp)
-  // of their unit vectors — the shortest path on a sphere, not a straight
-  // line on the equirectangular projection.
-  function greatCirclePoints(lat1, lon1, lat2, lon2, steps) {
-    const rad = Math.PI / 180, deg = 180 / Math.PI;
-    const p1 = lat1 * rad, l1 = lon1 * rad, p2 = lat2 * rad, l2 = lon2 * rad;
-    const x1 = Math.cos(p1) * Math.cos(l1), y1 = Math.cos(p1) * Math.sin(l1), z1 = Math.sin(p1);
-    const x2 = Math.cos(p2) * Math.cos(l2), y2 = Math.cos(p2) * Math.sin(l2), z2 = Math.sin(p2);
-    const dot = Math.max(-1, Math.min(1, x1 * x2 + y1 * y2 + z1 * z2));
-    const d = Math.acos(dot);
-    if (d < 1e-9) return [[lon1, lat1]];
-
-    const points = [];
-    for (let i = 0; i <= steps; i++) {
-      const f = i / steps;
-      const a = Math.sin((1 - f) * d) / Math.sin(d);
-      const b = Math.sin(f * d) / Math.sin(d);
-      const x = a * x1 + b * x2, y = a * y1 + b * y2, z = a * z1 + b * z2;
-      points.push([Math.atan2(y, x) * deg, Math.atan2(z, Math.sqrt(x * x + y * y)) * deg]);
-    }
-    return points;
+    const { minLon, maxLon, minLat, maxLat } = currentView;
+    return [(lon - minLon) / (maxLon - minLon) * w, (maxLat - lat) / (maxLat - minLat) * h];
   }
 
   function ringToPath(ring, w, h) {
@@ -78,6 +66,56 @@ const HamMap = (() => {
 
   function rebuildLandPaths(w, h) {
     landPaths = (HamMap._rings || []).map(ring => ringToPath(ring, w, h));
+  }
+
+  // Points along the great-circle path from (lat1,lon1) to (lat2,lon2),
+  // via spherical interpolation (slerp) between the two unit vectors —
+  // standard intermediate-point-on-great-circle formula.
+  function greatCirclePoints(lat1, lon1, lat2, lon2, steps) {
+    const toRad = d => d * Math.PI / 180;
+    const toDeg = r => r * 180 / Math.PI;
+    const phi1 = toRad(lat1), lam1 = toRad(lon1);
+    const phi2 = toRad(lat2), lam2 = toRad(lon2);
+
+    const delta = 2 * Math.asin(Math.sqrt(
+      Math.sin((phi2 - phi1) / 2) ** 2 +
+      Math.cos(phi1) * Math.cos(phi2) * Math.sin((lam2 - lam1) / 2) ** 2
+    ));
+    if (delta === 0 || Number.isNaN(delta)) return [[lon1, lat1]];
+
+    const points = [];
+    for (let i = 0; i <= steps; i++) {
+      const f = i / steps;
+      const a = Math.sin((1 - f) * delta) / Math.sin(delta);
+      const b = Math.sin(f * delta) / Math.sin(delta);
+      const x = a * Math.cos(phi1) * Math.cos(lam1) + b * Math.cos(phi2) * Math.cos(lam2);
+      const y = a * Math.cos(phi1) * Math.sin(lam1) + b * Math.cos(phi2) * Math.sin(lam2);
+      const z = a * Math.sin(phi1) + b * Math.sin(phi2);
+      const phi = Math.atan2(z, Math.sqrt(x * x + y * y));
+      const lam = Math.atan2(y, x);
+      points.push([toDeg(lam), toDeg(phi)]);
+    }
+    return points;
+  }
+
+  // A great-circle line drawn on a flat equirectangular map has to break
+  // into a fresh subpath wherever it crosses the antimeridian, or it draws
+  // a bogus line straight across the map instead of exiting one edge and
+  // re-entering the other.
+  function greatCirclePath(lat1, lon1, lat2, lon2, w, h) {
+    const points = greatCirclePoints(lat1, lon1, lat2, lon2, 64);
+    const path = new Path2D();
+    let prevLon = null;
+    points.forEach(([lon, lat], i) => {
+      const [x, y] = project(lon, lat, w, h);
+      if (i === 0 || (prevLon !== null && Math.abs(lon - prevLon) > 180)) {
+        path.moveTo(x, y);
+      } else {
+        path.lineTo(x, y);
+      }
+      prevLon = lon;
+    });
+    return path;
   }
 
   function nightPolygonPath(date, w, h) {
@@ -127,46 +165,94 @@ const HamMap = (() => {
     ctx.lineTo(w, h / 2);
     ctx.stroke();
 
-    for (const ln of lines) {
-      const pts = greatCirclePoints(ln.lat1, ln.lon1, ln.lat2, ln.lon2, 32);
-      ctx.beginPath();
-      let prevX = null;
-      for (const [lon, lat] of pts) {
-        const [x, y] = project(lon, lat, w, h);
-        // A great-circle path crossing the antimeridian projects as a
-        // huge jump in x on this flat map; start a fresh subpath instead
-        // of drawing a line straight across the whole width.
-        if (prevX === null || Math.abs(x - prevX) > w / 2) {
-          ctx.moveTo(x, y);
-        } else {
-          ctx.lineTo(x, y);
-        }
-        prevX = x;
-      }
-      ctx.strokeStyle = ln.color || 'rgba(224, 178, 62, 0.4)';
-      ctx.lineWidth = 1;
-      ctx.stroke();
+    // Each line's color is band-coded (via BandColors — see cluster.js), at
+    // reduced opacity so it reads as a line rather than competing with the
+    // solid marker dots.
+    ctx.lineWidth = 2;
+    ctx.globalAlpha = 0.5;
+    for (const line of lines) {
+      ctx.strokeStyle = line.color || '#e0b23e';
+      ctx.stroke(greatCirclePath(line.lat1, line.lon1, line.lat2, line.lon2, w, h));
     }
+    ctx.globalAlpha = 1;
 
     for (const m of markers) {
       const [x, y] = project(m.lon, m.lat, w, h);
       ctx.beginPath();
-      ctx.arc(x, y, m.r || 5, 0, Math.PI * 2);
+      ctx.arc(x, y, 5, 0, Math.PI * 2);
       ctx.fillStyle = m.color || '#4fb0ff';
       ctx.fill();
       ctx.strokeStyle = '#0b0f14';
       ctx.lineWidth = 1.5;
       ctx.stroke();
-      if (m.label) {
-        ctx.fillStyle = '#d8e1ea';
-        ctx.font = '11px sans-serif';
-        ctx.fillText(m.label, x + 8, y + 4);
+    }
+
+    // Labels are placed as a separate pass, after all dots, so each label's
+    // candidate positions can be checked against every other label already
+    // placed — markers close together on the map (common for e.g. several
+    // European spots at once) would otherwise render illegible stacked text.
+    ctx.fillStyle = '#d8e1ea';
+    ctx.font = '11px sans-serif';
+    const placedLabels = [];
+    for (const m of markers) {
+      if (!m.label) continue;
+      const [x, y] = project(m.lon, m.lat, w, h);
+      const pos = placeLabel(x, y, ctx.measureText(m.label).width, 11, placedLabels);
+      // No position at any tried distance was free — with several markers
+      // packed into a very small area, that happens. Skipping the label is
+      // more readable than forcing it on top of another one.
+      if (pos) ctx.fillText(m.label, pos[0], pos[1]);
+    }
+  }
+
+  function rectsOverlap(a, b) {
+    return a.x0 < b.x1 && a.x1 > b.x0 && a.y0 < b.y1 && a.y1 > b.y0;
+  }
+
+  // Tries candidate positions on rings of increasing radius around the
+  // marker dot at (x, y), picking the first whose label bounding box
+  // doesn't overlap any already-placed label. A single ring right at the
+  // dot (the original fixed-offset approach) runs out of room fast when
+  // several markers cluster within a few pixels of each other — pushing
+  // outward to a wider ring gives later labels somewhere left to go.
+  function placeLabel(x, y, textWidth, textHeight, placedLabels) {
+    const radii = [8, 16, 24, 32, 40];
+    const anglesPerRing = 8;
+    for (const r of radii) {
+      for (let i = 0; i < anglesPerRing; i++) {
+        const theta = (i / anglesPerRing) * Math.PI * 2;
+        const ax = x + Math.cos(theta) * r;
+        const ay = y + Math.sin(theta) * r;
+        const cx = ax - textWidth / 2;
+        const cy = ay + textHeight / 2;
+        const rect = { x0: cx, y0: cy - textHeight, x1: cx + textWidth, y1: cy };
+        if (!placedLabels.some(p => rectsOverlap(rect, p))) {
+          placedLabels.push(rect);
+          return [cx, cy];
+        }
       }
     }
+    return null;
   }
 
   function setMarkers(next) {
     markers = next;
+  }
+
+  // landPaths are pre-baked Path2D objects at specific pixel coordinates
+  // (from whatever project() did at build time) — changing the view
+  // without rebuilding them would keep showing the old view's coastlines.
+  function setRegion(name) {
+    currentView = VIEWS[name] || VIEWS.world;
+    rebuildLandPaths(canvas.clientWidth, canvas.clientHeight);
+    draw();
+  }
+
+  // Full replace, unlike markers' add/remove — nothing else manages lines
+  // independently (markers need incremental add/remove because the home
+  // marker is set once, separately, and must survive cluster.js's polling).
+  function setLines(next) {
+    lines = next;
   }
 
   function addMarker(marker) {
@@ -174,32 +260,61 @@ const HamMap = (() => {
     markers.push(marker);
   }
 
-  // Replaces every marker tagged with `group` in one go, leaving markers
-  // added via addMarker (home QTH, click-to-plot) or other groups alone.
-  // Used for bulk-plotting an entire spot list that refreshes on a poll
-  // timer, where individual ids would otherwise accumulate stale dots.
-  function setGroup(group, list) {
-    markers = markers.filter(m => m.group !== group)
-      .concat(list.map(m => ({ ...m, group })));
+  function removeMarker(id) {
+    markers = markers.filter(m => m.id !== id);
   }
 
-  // Same idea as setGroup, but for lines.
-  function setLineGroup(group, list) {
-    lines = lines.filter(l => l.group !== group)
-      .concat(list.map(l => ({ ...l, group })));
+  // Nearest marker within a few pixels of (x, y) — canvas coordinates in
+  // the same CSS-pixel space project() itself outputs (canvas.clientWidth/
+  // clientHeight, not the device-pixel canvas.width/height), so no dpr
+  // math is needed to match what a mouse event reports.
+  function markerAt(x, y) {
+    const w = canvas.clientWidth, h = canvas.clientHeight;
+    const hitRadius = 8;
+    let nearest = null, nearestDist = hitRadius;
+    for (const m of markers) {
+      const [mx, my] = project(m.lon, m.lat, w, h);
+      const dist = Math.hypot(x - mx, y - my);
+      if (dist <= nearestDist) {
+        nearest = m;
+        nearestDist = dist;
+      }
+    }
+    return nearest;
   }
 
   async function init() {
-    resize();
     await loadCoastlines();
-    rebuildLandPaths(canvas.clientWidth, canvas.clientHeight);
-    window.addEventListener('resize', () => {
+    // ResizeObserver (rather than a manual call + window 'resize' listener)
+    // because its first callback is guaranteed to fire after layout has
+    // actually settled — a manual resize() call here would run mid-parse,
+    // before the flex/aspect-ratio layout of #map-panel has stabilized,
+    // and capture a stale box size. It also naturally catches later size
+    // changes that aren't triggered by a window resize (e.g. a sibling
+    // panel's content changing #map-panel's stretched size).
+    const ro = new ResizeObserver(() => {
       resize();
       rebuildLandPaths(canvas.clientWidth, canvas.clientHeight);
       draw();
     });
-    draw();
+    ro.observe(canvas.parentElement);
+
+    canvas.addEventListener('click', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const m = markerAt(e.clientX - rect.left, e.clientY - rect.top);
+      // Marker labels are always set to the callsign they represent (home,
+      // DX, and spotter markers alike — see qrz.js/cluster.js), and Qrz is
+      // a shared global other panel modules already call into directly
+      // (same as cluster.js does for table-row clicks), so this reuses the
+      // exact same popup path rather than inventing a second one.
+      if (m && m.label) Qrz.lookupAndShow(m.label, m.id, m.color);
+    });
+    canvas.addEventListener('mousemove', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const m = markerAt(e.clientX - rect.left, e.clientY - rect.top);
+      canvas.style.cursor = m ? 'pointer' : 'default';
+    });
   }
 
-  return { init, draw, setMarkers, addMarker, setGroup, setLineGroup };
+  return { init, draw, setMarkers, addMarker, removeMarker, setLines, setRegion };
 })();
