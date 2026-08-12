@@ -9,6 +9,7 @@ const HamMap = (() => {
 
   let landPaths = [];
   let markers = []; // { lat, lon, label, color }
+  let lines = []; // { lat1, lon1, lat2, lon2, color }
 
   function resize() {
     const rect = canvas.parentElement.getBoundingClientRect();
@@ -22,6 +23,30 @@ const HamMap = (() => {
 
   function project(lon, lat, w, h) {
     return [(lon + 180) / 360 * w, (90 - lat) / 180 * h];
+  }
+
+  // Interpolates `steps` points along the great-circle path between two
+  // lat/lon points (degrees), via spherical linear interpolation (slerp)
+  // of their unit vectors — the shortest path on a sphere, not a straight
+  // line on the equirectangular projection.
+  function greatCirclePoints(lat1, lon1, lat2, lon2, steps) {
+    const rad = Math.PI / 180, deg = 180 / Math.PI;
+    const p1 = lat1 * rad, l1 = lon1 * rad, p2 = lat2 * rad, l2 = lon2 * rad;
+    const x1 = Math.cos(p1) * Math.cos(l1), y1 = Math.cos(p1) * Math.sin(l1), z1 = Math.sin(p1);
+    const x2 = Math.cos(p2) * Math.cos(l2), y2 = Math.cos(p2) * Math.sin(l2), z2 = Math.sin(p2);
+    const dot = Math.max(-1, Math.min(1, x1 * x2 + y1 * y2 + z1 * z2));
+    const d = Math.acos(dot);
+    if (d < 1e-9) return [[lon1, lat1]];
+
+    const points = [];
+    for (let i = 0; i <= steps; i++) {
+      const f = i / steps;
+      const a = Math.sin((1 - f) * d) / Math.sin(d);
+      const b = Math.sin(f * d) / Math.sin(d);
+      const x = a * x1 + b * x2, y = a * y1 + b * y2, z = a * z1 + b * z2;
+      points.push([Math.atan2(y, x) * deg, Math.atan2(z, Math.sqrt(x * x + y * y)) * deg]);
+    }
+    return points;
   }
 
   function ringToPath(ring, w, h) {
@@ -102,6 +127,27 @@ const HamMap = (() => {
     ctx.lineTo(w, h / 2);
     ctx.stroke();
 
+    for (const ln of lines) {
+      const pts = greatCirclePoints(ln.lat1, ln.lon1, ln.lat2, ln.lon2, 32);
+      ctx.beginPath();
+      let prevX = null;
+      for (const [lon, lat] of pts) {
+        const [x, y] = project(lon, lat, w, h);
+        // A great-circle path crossing the antimeridian projects as a
+        // huge jump in x on this flat map; start a fresh subpath instead
+        // of drawing a line straight across the whole width.
+        if (prevX === null || Math.abs(x - prevX) > w / 2) {
+          ctx.moveTo(x, y);
+        } else {
+          ctx.lineTo(x, y);
+        }
+        prevX = x;
+      }
+      ctx.strokeStyle = ln.color || 'rgba(224, 178, 62, 0.4)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+
     for (const m of markers) {
       const [x, y] = project(m.lon, m.lat, w, h);
       ctx.beginPath();
@@ -137,6 +183,12 @@ const HamMap = (() => {
       .concat(list.map(m => ({ ...m, group })));
   }
 
+  // Same idea as setGroup, but for lines.
+  function setLineGroup(group, list) {
+    lines = lines.filter(l => l.group !== group)
+      .concat(list.map(l => ({ ...l, group })));
+  }
+
   async function init() {
     resize();
     await loadCoastlines();
@@ -149,5 +201,5 @@ const HamMap = (() => {
     draw();
   }
 
-  return { init, draw, setMarkers, addMarker, setGroup };
+  return { init, draw, setMarkers, addMarker, setGroup, setLineGroup };
 })();

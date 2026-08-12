@@ -145,24 +145,31 @@ func main() {
 // both a spot source and the worked-before index.
 type decoratedSpot struct {
 	cluster.Spot
-	Country    string  `json:"country"`
-	Lat        float64 `json:"lat"`
-	Lon        float64 `json:"lon"`
-	WorkedAny  bool    `json:"worked_any"`
-	WorkedBand bool    `json:"worked_band"`
+	Country        string  `json:"country"`
+	Lat            float64 `json:"lat"`
+	Lon            float64 `json:"lon"`
+	SpotterCountry string  `json:"spotter_country"`
+	SpotterLat     float64 `json:"spotter_lat"`
+	SpotterLon     float64 `json:"spotter_lon"`
+	WorkedAny      bool    `json:"worked_any"`
+	WorkedBand     bool    `json:"worked_band"`
 }
 
 func decorateSpots(spots []cluster.Spot, idx *adif.Index) []decoratedSpot {
 	out := make([]decoratedSpot, len(spots))
 	for i, s := range spots {
-		entity, _ := dxcc.Locate(s.DXCall)
+		dx, _ := dxcc.Locate(s.DXCall)
+		spotter, _ := dxcc.Locate(s.Spotter)
 		out[i] = decoratedSpot{
-			Spot:       s,
-			Country:    entity.Name,
-			Lat:        entity.Lat,
-			Lon:        entity.Lon,
-			WorkedAny:  idx.WorkedAny(s.DXCall),
-			WorkedBand: idx.WorkedBand(s.DXCall, s.Band),
+			Spot:           s,
+			Country:        dx.Name,
+			Lat:            dx.Lat,
+			Lon:            dx.Lon,
+			SpotterCountry: spotter.Name,
+			SpotterLat:     spotter.Lat,
+			SpotterLon:     spotter.Lon,
+			WorkedAny:      idx.WorkedAny(s.DXCall),
+			WorkedBand:     idx.WorkedBand(s.DXCall, s.Band),
 		}
 	}
 	return out

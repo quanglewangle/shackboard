@@ -44,6 +44,17 @@ const Cluster = (() => {
     HamMap.setGroup('dxspots', data.spots
       .filter(s => s.country)
       .map(s => ({ id: 'dx-' + s.dx_call, lat: s.lat, lon: s.lon, color: '#e0b23e', r: 3 })));
+
+    // Line from spotter to DX for every spot where both ends resolved.
+    HamMap.setLineGroup('dxspots', data.spots
+      .filter(s => s.country && s.spotter_country)
+      .map(s => ({
+        id: 'dx-' + s.dx_call + '-' + s.spotter,
+        lat1: s.spotter_lat, lon1: s.spotter_lon,
+        lat2: s.lat, lon2: s.lon,
+        color: 'rgba(224, 178, 62, 0.35)',
+      })));
+
     HamMap.draw();
   }
 
