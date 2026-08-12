@@ -15,6 +15,6 @@ echo "Copying binary to $SERVER..."
 scp /tmp/shackboard_deploy "$SERVER":/tmp/shackboard_new
 
 echo "Installing on $SERVER..."
-ssh "$SERVER" "mv /tmp/shackboard_new /home/peter/shackboard && systemctl --user restart shackboard && systemctl --user is-active shackboard"
+ssh "$SERVER" "chmod +x /tmp/shackboard_new && mv /tmp/shackboard_new /home/peter/shackboard && systemctl --user restart shackboard && systemctl --user is-active shackboard"
 
 echo "Done — deployed $HASH to $SERVER"
